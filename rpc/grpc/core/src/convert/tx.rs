@@ -199,6 +199,14 @@ from!(item: &kaspa_rpc_core::RpcUtxosByAddressesEntry, protowire::RpcUtxosByAddr
     }
 });
 
+from!(item: &kaspa_rpc_core::RpcUtxosByCovenantIdEntry, protowire::RpcUtxosByCovenantIdEntry, {
+    Self {
+        covenant_id: item.covenant_id.to_string(),
+        outpoint: Some((&item.outpoint).into()),
+        utxo_entry: Some((&item.utxo_entry).into()),
+    }
+});
+
 // ----------------------------------------------------------------------------
 // protowire to rpc_core
 // ----------------------------------------------------------------------------
@@ -446,6 +454,22 @@ try_from!(item: &protowire::RpcUtxosByAddressesEntry, kaspa_rpc_core::RpcUtxosBy
             .utxo_entry
             .as_ref()
             .ok_or_else(|| RpcError::MissingRpcFieldError("UtxosByAddressesEntry".to_string(), "utxo_entry".to_string()))?
+            .try_into()?,
+    }
+});
+
+try_from!(item: &protowire::RpcUtxosByCovenantIdEntry, kaspa_rpc_core::RpcUtxosByCovenantIdEntry, {
+    Self {
+        covenant_id: RpcHash::from_str(&item.covenant_id)?,
+        outpoint: item
+            .outpoint
+            .as_ref()
+            .ok_or_else(|| RpcError::MissingRpcFieldError("UtxosByCovenantIdEntry".to_string(), "outpoint".to_string()))?
+            .try_into()?,
+        utxo_entry: item
+            .utxo_entry
+            .as_ref()
+            .ok_or_else(|| RpcError::MissingRpcFieldError("UtxosByCovenantIdEntry".to_string(), "utxo_entry".to_string()))?
             .try_into()?,
     }
 });

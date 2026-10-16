@@ -106,6 +106,9 @@ pub enum KaspadPayloadOps {
     StopNotifyingUtxosChanged,
     StopNotifyingPruningPointUtxoSetOverride,
 
+    // Appended at the end to preserve existing repr(u8) discriminants.
+    GetUtxosByCovenantIds,
+
     // Please note:
     // Notification payloads existing in ResponsePayload are not considered valid ops.
     // The conversion from a notification ResponsePayload into KaspadPayloadOps fails.

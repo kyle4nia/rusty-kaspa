@@ -338,6 +338,14 @@ from!(item: RpcResult<&kaspa_rpc_core::GetUtxosByAddressesResponse>, protowire::
     Self { entries: item.entries.iter().map(|x| x.into()).collect(), error: None }
 });
 
+from!(item: &kaspa_rpc_core::GetUtxosByCovenantIdsRequest, protowire::GetUtxosByCovenantIdsRequestMessage, {
+    Self { covenant_ids: item.covenant_ids.iter().map(|x| x.to_string()).collect() }
+});
+from!(item: RpcResult<&kaspa_rpc_core::GetUtxosByCovenantIdsResponse>, protowire::GetUtxosByCovenantIdsResponseMessage, {
+    debug!("GRPC, Creating GetUtxosByCovenantIds message with {} entries", item.entries.len());
+    Self { entries: item.entries.iter().map(|x| x.into()).collect(), error: None }
+});
+
 from!(item: &kaspa_rpc_core::GetBalanceByAddressRequest, protowire::GetBalanceByAddressRequestMessage, {
     Self { address: (&item.address).into() }
 });
@@ -887,6 +895,13 @@ try_from!(item: &protowire::GetUtxosByAddressesRequestMessage, kaspa_rpc_core::G
     Self { addresses: item.addresses.iter().map(|x| x.as_str().try_into()).collect::<Result<Vec<_>, _>>()? }
 });
 try_from!(item: &protowire::GetUtxosByAddressesResponseMessage, RpcResult<kaspa_rpc_core::GetUtxosByAddressesResponse>, {
+    Self { entries: item.entries.iter().map(|x| x.try_into()).collect::<Result<Vec<_>, _>>()? }
+});
+
+try_from!(item: &protowire::GetUtxosByCovenantIdsRequestMessage, kaspa_rpc_core::GetUtxosByCovenantIdsRequest, {
+    Self { covenant_ids: item.covenant_ids.iter().map(|x| RpcHash::from_str(x)).collect::<Result<Vec<_>, _>>()? }
+});
+try_from!(item: &protowire::GetUtxosByCovenantIdsResponseMessage, RpcResult<kaspa_rpc_core::GetUtxosByCovenantIdsResponse>, {
     Self { entries: item.entries.iter().map(|x| x.try_into()).collect::<Result<Vec<_>, _>>()? }
 });
 
