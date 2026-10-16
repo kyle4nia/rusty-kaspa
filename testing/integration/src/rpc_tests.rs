@@ -445,6 +445,18 @@ async fn sanity_test() {
                 })
             }
 
+            KaspadPayloadOps::GetUtxosByCovenantIds => {
+                let rpc_client = client.clone();
+                tst!(op, {
+                    let covenant_ids = vec![Hash::from_bytes([0u8; 32])];
+                    let response = rpc_client
+                        .get_utxos_by_covenant_ids_call(None, GetUtxosByCovenantIdsRequest { covenant_ids })
+                        .await
+                        .unwrap();
+                    assert!(response.entries.is_empty());
+                })
+            }
+
             KaspadPayloadOps::GetBalanceByAddress => {
                 let rpc_client = client.clone();
                 tst!(op, {
