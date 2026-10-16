@@ -1508,6 +1508,66 @@ impl Deserializer for GetUtxosByAddressesResponse {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct GetUtxosByCovenantIdsRequest {
+    pub covenant_ids: Vec<RpcHash>,
+}
+
+impl GetUtxosByCovenantIdsRequest {
+    pub fn new(covenant_ids: Vec<RpcHash>) -> Self {
+        Self { covenant_ids }
+    }
+}
+
+impl Serializer for GetUtxosByCovenantIdsRequest {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        store!(u16, &1, writer)?;
+        store!(Vec<RpcHash>, &self.covenant_ids, writer)?;
+
+        Ok(())
+    }
+}
+
+impl Deserializer for GetUtxosByCovenantIdsRequest {
+    fn deserialize<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let _version = load!(u16, reader)?;
+        let covenant_ids = load!(Vec<RpcHash>, reader)?;
+
+        Ok(Self { covenant_ids })
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetUtxosByCovenantIdsResponse {
+    pub entries: Vec<RpcUtxosByCovenantIdEntry>,
+}
+
+impl GetUtxosByCovenantIdsResponse {
+    pub fn new(entries: Vec<RpcUtxosByCovenantIdEntry>) -> Self {
+        Self { entries }
+    }
+}
+
+impl Serializer for GetUtxosByCovenantIdsResponse {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        store!(u16, &1, writer)?;
+        serialize!(Vec<RpcUtxosByCovenantIdEntry>, &self.entries, writer)?;
+
+        Ok(())
+    }
+}
+
+impl Deserializer for GetUtxosByCovenantIdsResponse {
+    fn deserialize<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let _version = load!(u16, reader)?;
+        let entries = deserialize!(Vec<RpcUtxosByCovenantIdEntry>, reader)?;
+
+        Ok(Self { entries })
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BanRequest {
     pub ip: RpcIpAddress,
 }

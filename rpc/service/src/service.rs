@@ -802,6 +802,25 @@ NOTE: This error usually indicates an RPC conversion error between the node and 
         Ok(GetUtxosByAddressesResponse::new(self.index_converter.get_utxos_by_addresses_entries(&entry_map)))
     }
 
+    async fn get_utxos_by_covenant_ids_call(
+        &self,
+        _connection: Option<&DynRpcConnection>,
+        request: GetUtxosByCovenantIdsRequest,
+    ) -> RpcResult<GetUtxosByCovenantIdsResponse> {
+        if !self.config.utxoindex {
+            return Err(RpcError::NoUtxoIndex);
+        }
+        let session = self.consensus_manager.consensus().unguarded_session();
+        // do not retrieve utxos while in unstable ibd state.
+        if session.async_is_consensus_in_transitional_ibd_state().await {
+            return Err(RpcError::ConsensusInTransitionalIbdState);
+        }
+
+        let entry_map =
+            self.utxoindex.clone().unwrap().get_utxos_by_covenant_ids(request.covenant_ids).await.unwrap_or_default();
+        Ok(GetUtxosByCovenantIdsResponse::new(self.index_converter.get_utxos_by_covenant_id_entries(&entry_map)))
+    }
+
     async fn get_balance_by_address_call(
         &self,
         _connection: Option<&DynRpcConnection>,

@@ -1,4 +1,4 @@
-use crate::{RpcTransactionOutpoint, RpcUtxoEntry};
+use crate::{RpcHash, RpcTransactionOutpoint, RpcUtxoEntry};
 use serde::{Deserialize, Serialize};
 use workflow_serializer::prelude::*;
 
@@ -29,6 +29,34 @@ impl Deserializer for RpcUtxosByAddressesEntry {
         let outpoint = deserialize!(RpcTransactionOutpoint, reader)?;
         let utxo_entry = deserialize!(RpcUtxoEntry, reader)?;
         Ok(Self { address, outpoint, utxo_entry })
+    }
+}
+
+/// Represents a UTXO entry of a covenant id returned by the `GetUtxosByCovenantIds` RPC.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcUtxosByCovenantIdEntry {
+    pub covenant_id: RpcHash,
+    pub outpoint: RpcTransactionOutpoint,
+    pub utxo_entry: RpcUtxoEntry,
+}
+
+impl Serializer for RpcUtxosByCovenantIdEntry {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        store!(u8, &1, writer)?; // version
+        store!(RpcHash, &self.covenant_id, writer)?;
+        serialize!(RpcTransactionOutpoint, &self.outpoint, writer)?;
+        serialize!(RpcUtxoEntry, &self.utxo_entry, writer)
+    }
+}
+
+impl Deserializer for RpcUtxosByCovenantIdEntry {
+    fn deserialize<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let _version: u8 = load!(u8, reader)?;
+        let covenant_id = load!(RpcHash, reader)?;
+        let outpoint = deserialize!(RpcTransactionOutpoint, reader)?;
+        let utxo_entry = deserialize!(RpcUtxoEntry, reader)?;
+        Ok(Self { covenant_id, outpoint, utxo_entry })
     }
 }
 

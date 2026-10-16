@@ -144,6 +144,8 @@ pub enum RpcApiOps {
     GetBlockRewardInfo = 152,
     /// Get Seq-Commit Lane Proof
     GetSeqCommitLaneProof = 153,
+    /// Get a list of available UTXOs for a given covenant id
+    GetUtxosByCovenantIds = 154,
 }
 
 impl RpcApiOps {

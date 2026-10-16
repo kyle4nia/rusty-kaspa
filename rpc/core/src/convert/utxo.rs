@@ -2,8 +2,9 @@
 
 use crate::RpcUtxoEntry;
 use crate::RpcUtxosByAddressesEntry;
+use crate::RpcUtxosByCovenantIdEntry;
 use kaspa_addresses::Prefix;
-use kaspa_index_core::indexed_utxos::UtxoSetByScriptPublicKey;
+use kaspa_index_core::indexed_utxos::{UtxoSetByCovenantId, UtxoSetByScriptPublicKey};
 use kaspa_txscript::extract_script_pub_key_address;
 
 // ----------------------------------------------------------------------------
@@ -25,6 +26,27 @@ pub fn utxo_set_into_rpc(item: &UtxoSetByScriptPublicKey, prefix: Option<Prefix>
                         entry.block_daa_score,
                         entry.is_coinbase,
                         entry.covenant_id,
+                    ),
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>()
+}
+
+pub fn covenant_utxo_set_into_rpc(item: &UtxoSetByCovenantId) -> Vec<RpcUtxosByCovenantIdEntry> {
+    item.iter()
+        .flat_map(|(covenant_id, utxo_collection)| {
+            utxo_collection
+                .iter()
+                .map(|(outpoint, entry)| RpcUtxosByCovenantIdEntry {
+                    covenant_id: *covenant_id,
+                    outpoint: (*outpoint).into(),
+                    utxo_entry: RpcUtxoEntry::new(
+                        entry.amount,
+                        entry.script_public_key.clone(),
+                        entry.block_daa_score,
+                        entry.is_coinbase,
+                        Some(*covenant_id),
                     ),
                 })
                 .collect::<Vec<_>>()

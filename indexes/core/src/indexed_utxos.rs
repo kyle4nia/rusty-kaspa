@@ -13,9 +13,31 @@ pub type CompactUtxoCollection = HashMap<TransactionOutpoint, CompactUtxoEntry>;
 /// A collection of utxos indexed via; [`ScriptPublicKey`] => [`TransactionOutpoint`] => [`CompactUtxoEntry`].
 pub type UtxoSetByScriptPublicKey = HashMap<ScriptPublicKey, CompactUtxoCollection>;
 
-/// A collection of utxos indexed via covenant id; [`Hash`] => [`TransactionOutpoint`] => [`CompactUtxoEntry`].
+/// A compacted UTXO entry for the covenant-id index. Unlike [`CompactUtxoEntry`] it retains the
+/// `script_public_key`: entries here are keyed by covenant id, not by script public key, so the
+/// owning script cannot be recovered from the key and must be stored with the value.
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct CovenantUtxoEntry {
+    pub script_public_key: ScriptPublicKey,
+    pub amount: u64,
+    pub block_daa_score: u64,
+    pub is_coinbase: bool,
+}
+
+impl CovenantUtxoEntry {
+    pub fn new(script_public_key: ScriptPublicKey, amount: u64, block_daa_score: u64, is_coinbase: bool) -> Self {
+        Self { script_public_key, amount, block_daa_score, is_coinbase }
+    }
+}
+
+impl MemSizeEstimator for CovenantUtxoEntry {}
+
+/// A collection of covenant utxos; [`TransactionOutpoint`] => [`CovenantUtxoEntry`].
+pub type CovenantUtxoCollection = HashMap<TransactionOutpoint, CovenantUtxoEntry>;
+
+/// A collection of utxos indexed via covenant id; [`Hash`] => [`TransactionOutpoint`] => [`CovenantUtxoEntry`].
 /// Only utxos carrying a covenant id are present; plain (covenant-less) outputs are not indexed here.
-pub type UtxoSetByCovenantId = HashMap<Hash, CompactUtxoCollection>;
+pub type UtxoSetByCovenantId = HashMap<Hash, CovenantUtxoCollection>;
 
 /// A map of balance by script public key
 pub type BalanceByScriptPublicKey = HashMap<ScriptPublicKey, u64>;

@@ -1,4 +1,4 @@
-use crate::core::model::{CompactUtxoCollection, CompactUtxoEntry, UtxoSetByCovenantId, UtxoSetByScriptPublicKey};
+use crate::core::model::{CovenantUtxoCollection, CovenantUtxoEntry, UtxoSetByCovenantId, UtxoSetByScriptPublicKey};
 
 use kaspa_consensus_core::tx::{TransactionIndexType, TransactionOutpoint};
 use kaspa_core::debug;
@@ -17,7 +17,7 @@ pub const TRANSACTION_OUTPOINT_KEY_SIZE: usize = kaspa_hashes::HASH_SIZE + size_
 /// Full access key: covenant id bucket followed by the outpoint suffix.
 pub const COVENANT_FULL_ACCESS_KEY_SIZE: usize = COVENANT_ID_KEY_SIZE + TRANSACTION_OUTPOINT_KEY_SIZE;
 
-/// Full [`CompactUtxoEntry`] access key: 32 bytes of covenant-id bucket, then 36 bytes of outpoint.
+/// Full [`CovenantUtxoEntry`] access key: 32 bytes of covenant-id bucket, then 36 bytes of outpoint.
 /// The covenant id is a fixed-width prefix, so a prefix seek over it yields every utxo of that covenant.
 #[derive(Eq, Hash, PartialEq, Debug, Clone, Serialize, Deserialize)]
 struct CovenantFullAccessKey(Arc<Vec<u8>>);
@@ -61,7 +61,8 @@ pub trait UtxoSetByCovenantIdStore: UtxoSetByCovenantIdStoreReader {
     fn remove_utxo_entries(&mut self, utxo_entries: &UtxoSetByScriptPublicKey) -> StoreResult<()>;
 
     /// Add the covenant-bearing entries of the given [`UtxoSetByScriptPublicKey`] into the store.
-    /// Entries without a covenant id are ignored.
+    /// Entries without a covenant id are ignored. The script public key (the outer map key) is
+    /// retained in the stored value, since it cannot be recovered from the covenant-id key.
     fn add_utxo_entries(&mut self, utxo_entries: &UtxoSetByScriptPublicKey) -> StoreResult<()>;
 
     /// Removes all entries in the cache and db, besides the prefix itself.
@@ -73,7 +74,7 @@ pub trait UtxoSetByCovenantIdStore: UtxoSetByCovenantIdStoreReader {
 #[derive(Clone)]
 pub struct DbUtxoSetByCovenantIdStore {
     db: Arc<DB>,
-    access: CachedDbAccess<CovenantFullAccessKey, CompactUtxoEntry>,
+    access: CachedDbAccess<CovenantFullAccessKey, CovenantUtxoEntry>,
 }
 
 impl DbUtxoSetByCovenantIdStore {
@@ -89,7 +90,7 @@ impl UtxoSetByCovenantIdStoreReader for DbUtxoSetByCovenantIdStore {
         let mut utxos_by_covenant_id = UtxoSetByCovenantId::new();
         for covenant_id in covenant_ids.into_iter() {
             let bucket = covenant_id.as_bytes();
-            let inner = CompactUtxoCollection::from_iter(
+            let inner = CovenantUtxoCollection::from_iter(
                 self.access.seek_iterator(Some(&bucket[..]), None, usize::MAX, false).map(|res| {
                     let (key, entry) = res.unwrap();
                     (outpoint_from_suffix(&key[..]), entry)
@@ -131,9 +132,19 @@ impl UtxoSetByCovenantIdStore for DbUtxoSetByCovenantIdStore {
 
         let mut writer = DirectDbWriter::new(&self.db);
 
-        let mut to_add = utxo_entries.values().flat_map(|compact_utxo_collection| {
-            compact_utxo_collection.iter().filter_map(|(transaction_outpoint, compact_utxo)| {
-                compact_utxo.covenant_id.map(|covenant_id| (CovenantFullAccessKey::new(&covenant_id, transaction_outpoint), *compact_utxo))
+        let mut to_add = utxo_entries.iter().flat_map(|(script_public_key, compact_utxo_collection)| {
+            compact_utxo_collection.iter().filter_map(move |(transaction_outpoint, compact_utxo)| {
+                compact_utxo.covenant_id.map(|covenant_id| {
+                    (
+                        CovenantFullAccessKey::new(&covenant_id, transaction_outpoint),
+                        CovenantUtxoEntry::new(
+                            script_public_key.clone(),
+                            compact_utxo.amount,
+                            compact_utxo.block_daa_score,
+                            compact_utxo.is_coinbase,
+                        ),
+                    )
+                })
             })
         });
 

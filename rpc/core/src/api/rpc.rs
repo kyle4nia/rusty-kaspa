@@ -369,6 +369,18 @@ pub trait RpcApi: Sync + Send + AnySync {
         request: GetUtxosByAddressesRequest,
     ) -> RpcResult<GetUtxosByAddressesResponse>;
 
+    /// Requests all current UTXOs for the given covenant ids.
+    ///
+    /// This call is only available when this node was started with `--utxoindex`.
+    async fn get_utxos_by_covenant_ids(&self, covenant_ids: Vec<RpcHash>) -> RpcResult<Vec<RpcUtxosByCovenantIdEntry>> {
+        Ok(self.get_utxos_by_covenant_ids_call(None, GetUtxosByCovenantIdsRequest::new(covenant_ids)).await?.entries)
+    }
+    async fn get_utxos_by_covenant_ids_call(
+        &self,
+        connection: Option<&DynRpcConnection>,
+        request: GetUtxosByCovenantIdsRequest,
+    ) -> RpcResult<GetUtxosByCovenantIdsResponse>;
+
     /// Requests the blue score of the current selected parent of the virtual block.
     async fn get_sink_blue_score(&self) -> RpcResult<u64> {
         Ok(self.get_sink_blue_score_call(None, GetSinkBlueScoreRequest {}).await?.blue_score)
