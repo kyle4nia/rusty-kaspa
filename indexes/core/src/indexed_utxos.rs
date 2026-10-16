@@ -13,6 +13,10 @@ pub type CompactUtxoCollection = HashMap<TransactionOutpoint, CompactUtxoEntry>;
 /// A collection of utxos indexed via; [`ScriptPublicKey`] => [`TransactionOutpoint`] => [`CompactUtxoEntry`].
 pub type UtxoSetByScriptPublicKey = HashMap<ScriptPublicKey, CompactUtxoCollection>;
 
+/// A collection of utxos indexed via covenant id; [`Hash`] => [`TransactionOutpoint`] => [`CompactUtxoEntry`].
+/// Only utxos carrying a covenant id are present; plain (covenant-less) outputs are not indexed here.
+pub type UtxoSetByCovenantId = HashMap<Hash, CompactUtxoCollection>;
+
 /// A map of balance by script public key
 pub type BalanceByScriptPublicKey = HashMap<ScriptPublicKey, u64>;
 

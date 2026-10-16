@@ -2,7 +2,7 @@ use crate::{
     IDENT,
     api::UtxoIndexApi,
     errors::{UtxoIndexError, UtxoIndexResult},
-    model::{CirculatingSupply, UtxoChanges, UtxoSetByScriptPublicKey},
+    model::{CirculatingSupply, UtxoChanges, UtxoSetByCovenantId, UtxoSetByScriptPublicKey},
     stores::store_manager::Store,
     update_container::UtxoIndexChanges,
 };
@@ -69,6 +69,13 @@ impl UtxoIndexApi for UtxoIndex {
         trace!("[{0}] retrieving utxos from {1} script public keys", IDENT, script_public_keys.len());
 
         self.store.get_balance_by_script_public_key(script_public_keys)
+    }
+
+    /// Retrieve utxos by covenant ids from the utxoindex db.
+    fn get_utxos_by_covenant_ids(&self, covenant_ids: Vec<Hash>) -> StoreResult<UtxoSetByCovenantId> {
+        trace!("[{0}] retrieving utxos from {1} covenant ids", IDENT, covenant_ids.len());
+
+        self.store.get_utxos_by_covenant_id(covenant_ids)
     }
 
     /// Retrieve the stored tips of the utxoindex.

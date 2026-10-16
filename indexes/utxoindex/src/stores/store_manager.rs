@@ -6,12 +6,14 @@ use kaspa_consensus_core::{
 };
 use kaspa_core::trace;
 use kaspa_database::prelude::{CachePolicy, DB, StoreResult};
-use kaspa_index_core::indexed_utxos::BalanceByScriptPublicKey;
+use kaspa_hashes::Hash;
+use kaspa_index_core::indexed_utxos::{BalanceByScriptPublicKey, UtxoSetByCovenantId};
 
 use crate::{
     IDENT,
     model::UtxoSetByScriptPublicKey,
     stores::{
+        covenant_utxos::{DbUtxoSetByCovenantIdStore, UtxoSetByCovenantIdStore, UtxoSetByCovenantIdStoreReader},
         indexed_utxos::{DbUtxoSetByScriptPublicKeyStore, UtxoSetByScriptPublicKeyStore, UtxoSetByScriptPublicKeyStoreReader},
         supply::{CirculatingSupplyStore, CirculatingSupplyStoreReader, DbCirculatingSupplyStore},
         tips::{DbUtxoIndexTipsStore, UtxoIndexTipsStore, UtxoIndexTipsStoreReader},
@@ -23,6 +25,7 @@ pub struct Store {
     utxoindex_tips_store: DbUtxoIndexTipsStore,
     circulating_supply_store: DbCirculatingSupplyStore,
     utxos_by_script_public_key_store: DbUtxoSetByScriptPublicKeyStore,
+    utxos_by_covenant_id_store: DbUtxoSetByCovenantIdStore,
 }
 
 impl Store {
@@ -30,7 +33,8 @@ impl Store {
         Self {
             utxoindex_tips_store: DbUtxoIndexTipsStore::new(db.clone()),
             circulating_supply_store: DbCirculatingSupplyStore::new(db.clone()),
-            utxos_by_script_public_key_store: DbUtxoSetByScriptPublicKeyStore::new(db, CachePolicy::Empty),
+            utxos_by_script_public_key_store: DbUtxoSetByScriptPublicKeyStore::new(db.clone(), CachePolicy::Empty),
+            utxos_by_covenant_id_store: DbUtxoSetByCovenantIdStore::new(db, CachePolicy::Empty),
         }
     }
 
@@ -40,6 +44,10 @@ impl Store {
 
     pub fn get_balance_by_script_public_key(&self, script_public_keys: ScriptPublicKeys) -> StoreResult<BalanceByScriptPublicKey> {
         self.utxos_by_script_public_key_store.get_balance_from_script_public_keys(script_public_keys)
+    }
+
+    pub fn get_utxos_by_covenant_id(&self, covenant_ids: Vec<Hash>) -> StoreResult<UtxoSetByCovenantId> {
+        self.utxos_by_covenant_id_store.get_utxos_from_covenant_ids(covenant_ids)
     }
 
     // This can have a big memory footprint, so it should be used only for tests.
@@ -54,8 +62,13 @@ impl Store {
         try_reset_on_err: bool,
     ) -> StoreResult<()> {
         // A UTXO entry can appear both in removed and in added (if the DAA score of the entry changed). Thus
-        // we must first apply removals and then additions (so it will be re-added in the addition phase)
+        // we must first apply removals and then additions (so it will be re-added in the addition phase).
+        // The covenant-id index is driven from the same add/remove sets (it only keeps entries carrying a
+        // covenant id), so it stays consistent with the script-public-key index by construction.
         let mut res = self.utxos_by_script_public_key_store.remove_utxo_entries(to_remove);
+        if res.is_ok() {
+            res = self.utxos_by_covenant_id_store.remove_utxo_entries(to_remove);
+        }
 
         if res.is_err() {
             if try_reset_on_err {
@@ -66,6 +79,9 @@ impl Store {
 
         // Now apply additions
         res = self.utxos_by_script_public_key_store.add_utxo_entries(to_add);
+        if res.is_ok() {
+            res = self.utxos_by_covenant_id_store.add_utxo_entries(to_add);
+        }
 
         if try_reset_on_err && res.is_err() {
             self.delete_all()?;
@@ -115,6 +131,7 @@ impl Store {
         self.utxoindex_tips_store.remove()?;
         self.circulating_supply_store.remove()?;
         self.utxos_by_script_public_key_store.delete_all()?;
+        self.utxos_by_covenant_id_store.delete_all()?;
 
         trace!("[{0}] clearing utxoindex database - success!", IDENT);
 

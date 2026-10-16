@@ -6,7 +6,7 @@ use kaspa_consensus_core::{
 use kaspa_consensusmanager::spawn_blocking;
 use kaspa_database::prelude::StoreResult;
 use kaspa_hashes::Hash;
-use kaspa_index_core::indexed_utxos::BalanceByScriptPublicKey;
+use kaspa_index_core::indexed_utxos::{BalanceByScriptPublicKey, UtxoSetByCovenantId};
 use parking_lot::RwLock;
 use std::{collections::HashSet, fmt::Debug, sync::Arc};
 
@@ -28,6 +28,11 @@ pub trait UtxoIndexApi: Send + Sync + Debug {
     fn get_utxos_by_script_public_keys(&self, script_public_keys: ScriptPublicKeys) -> StoreResult<UtxoSetByScriptPublicKey>;
 
     fn get_balance_by_script_public_keys(&self, script_public_keys: ScriptPublicKeys) -> StoreResult<BalanceByScriptPublicKey>;
+
+    /// Retrieve utxos by covenant ids from the utxoindex db.
+    ///
+    /// Note: Use a read lock when accessing this method
+    fn get_utxos_by_covenant_ids(&self, covenant_ids: Vec<Hash>) -> StoreResult<UtxoSetByCovenantId>;
 
     // This can have a big memory footprint, so it should be used only for tests.
     fn get_all_outpoints(&self) -> StoreResult<HashSet<TransactionOutpoint>>;
@@ -79,6 +84,10 @@ impl UtxoIndexProxy {
         script_public_keys: ScriptPublicKeys,
     ) -> StoreResult<BalanceByScriptPublicKey> {
         spawn_blocking(move || self.inner.read().get_balance_by_script_public_keys(script_public_keys)).await.unwrap()
+    }
+
+    pub async fn get_utxos_by_covenant_ids(self, covenant_ids: Vec<Hash>) -> StoreResult<UtxoSetByCovenantId> {
+        spawn_blocking(move || self.inner.read().get_utxos_by_covenant_ids(covenant_ids)).await.unwrap()
     }
 
     pub async fn update(self, utxo_diff: Arc<UtxoDiff>, tips: Arc<Vec<Hash>>) -> UtxoIndexResult<UtxoChanges> {
